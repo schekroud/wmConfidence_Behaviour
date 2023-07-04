@@ -350,3 +350,23 @@ ggsave(filename = paste0(figpath, '/trladjustment_confidence_prevtrlconferr_agg_
 ggsave(filename = paste0(figpath, '/trladjustment_confidence_prevtrlconferr_agg_singletrls.eps'), device = cairo_ps,  dpi = 300, height = 9, width = 9)
 
 #the regression line is the relationship between prev trl confidence error and the adjustment *from the linear mixed effects model*
+
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+glmdat <- df %>%
+  dplyr::mutate(confwidth = rad(confwidth), absrdif = rad(absrdif)) %>%
+  dplyr::filter(clickresp == 1, DTcheck == 0, confclicked == 1) %>%
+  dplyr::mutate(cond = forcats::fct_relevel(cond, 'cued'))
+
+glmdata = data.frame()
+
+for( sub in subs2use){
+  tmp <- glmdat %>% dplyr::filter(subid == sub)
+  contrasts(tmp$cond) <- contr.sum(2)
+  
+  
+}
+
+
+

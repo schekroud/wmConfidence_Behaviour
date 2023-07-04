@@ -239,7 +239,7 @@ df_resids.columns = ['subid', 'cond', 'std_residual']
 fig = plt.figure()
 ax = fig.add_subplot(111)
 sns.kdeplot(df_resids, x = 'std_residual', hue = 'cond',ax=ax)
-sns.rugplot(df_resids, x = 'std_residual', hue = 'cond',ax=ax)
+sns.rugplot(df_resids, x = 'std_residual', hue = 'cond',ax=ax) 
 
 #t-test on diffrence in standard deviation of the residuals between conditions
 sp.stats.ttest_rel(a = df_resids.query('cond == "cued"').std_residual.to_numpy(),
