@@ -2,7 +2,9 @@
 library(tidyverse) # general data manipulation & plotting
 library(magrittr)  # allows use of more pipes
 
-wd <- '/Users/sammi/Desktop/Experiments/DPhil/wmSelection'
+#wd <- '/Users/sammi/Desktop/Experiments/DPhil/wmSelection'
+wd <- 'C:/Users/sammirc/Desktop/phd/wmConfidence_Behaviour/Experiment1'
+
 setwd(wd)
 
 dpath <- paste0(wd, '/data') #path to folder with behavioural data

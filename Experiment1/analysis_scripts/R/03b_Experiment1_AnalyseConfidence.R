@@ -2,7 +2,7 @@
 library(tidyverse) # general data manipulation & plotting
 library(magrittr)  # allows use of more pipes
 library(afex)      # anovas etc
-library(RePsychLing)
+#library(RePsychLing)
 library(MASS)
 
 loadfonts = T
@@ -36,6 +36,7 @@ se <- function(x) sd(x)/sqrt(length(x))
 
 
 wd <- '/Users/sammi/Desktop/Experiments/DPhil/wmSelection'
+wd <- 'C:/Users/sammirc/Desktop/phd/wmConfidence_Behaviour/Experiment1'
 setwd(wd)
 
 dpath <- paste0(wd, '/data') #path to folder with behavioural data
@@ -45,7 +46,7 @@ figpath <- paste0(wd, '/figures')
 fpath <- paste0(dpath, '/wmSelection_BehaviouralData_All_Preprocessed.csv')
 
 
-df <- read.csv(fpath, header = T, as.is = T, sep = ',') %>% dplyr::select(-X) # str(df) if you want to see the columns and values etc
+df <- read.csv(fpath, header = T, as.is = T, sep = ',') #%>% dplyr::select(-X) # str(df) if you want to see the columns and values etc
 nsubs = length(unique(df$subid))
 subs2use <- c(1,2,3,4,5,6,7,9,10,11,13,14,15,16,17,18,19,20,21,22)
 
@@ -200,7 +201,8 @@ contrasts(lmm.data$cond) <- contr.sum(2) #specify a contrast between neutral and
 # are my DV normally distr
 # determine lambda for confwidth
 # temp fix for 0 values in the confwidth
-lmm.data$confwidth[lmm.data$confwidth==0] <- 0.0001
+#lmm.data$confwidth[lmm.data$confwidth==0] <- 0.0001
+lmm.data$confwidth[lmm.data$confwidth == 0] <- 0.1
 lambdaList <- boxcox(confwidth~cond, data=lmm.data)
 (lambda <- lambdaList$x[which.max(lambdaList$y)])
 

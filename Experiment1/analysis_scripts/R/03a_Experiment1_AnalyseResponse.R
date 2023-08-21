@@ -35,6 +35,7 @@ se <- function(x) sd(x)/sqrt(length(x))
 
 
 wd <- '/Users/sammi/Desktop/Experiments/DPhil/wmSelection'
+wd <- 'C:/Users/sammirc/Desktop/phd/wmConfidence_Behaviour/Experiment1'
 setwd(wd)
 
 dpath <- paste0(wd, '/data') #path to folder with behavioural data
@@ -42,10 +43,10 @@ figpath <- paste0(wd, '/figures')
 
 
 fpath <- '/Users/sammi/Desktop/Experiments/DPhil/wmSelection/data/wmSelection_BehaviouralData_All_Preprocessed.csv'
-
+fpath = paste0(wd, '/data', '/wmSelection_BehaviouralData_All_Preprocessed.csv')
 
 #get my block of test data
-df <- read.csv(fpath, header = T, as.is = T, sep = ',') %>% dplyr::select(-X) # str(df) if you want to see the columns and values etc
+df <- read.csv(fpath, header = T, as.is = T, sep = ',') #%>% dplyr::select(-X) # str(df) if you want to see the columns and values etc
 nsubs <- length(unique(df$subid))
 subs2use <- c(1,2,3,4,5,6,7,9,10,11,13,14,15,16,17,18,19,20,21,22)
 

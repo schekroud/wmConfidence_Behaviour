@@ -36,11 +36,12 @@ se <- function(x) sd(x)/sqrt(length(x))
 
 
 wd <- '/Users/sammi/Desktop/Experiments/DPhil/wmConfidence'
+wd <- 'C:/Users/sammirc/Desktop/phd/wmConfidence_Behaviour/Experiment2'
 setwd(wd)
 
 dpath <- paste0(wd, '/data') #path to folder with behavioural data
 figpath <- paste0(wd, '/figures/behaviour')
-fpath <- paste0(dpath, '/datafiles/wmConfidence_BehaviouralData_All.csv')
+fpath <- paste0(dpath, '/wmConfidence_BehaviouralData_All.csv')
 
 #load in the data
 df <- read.csv(fpath, header = T, as.is = T, sep = ',') # str(df) if you want to see the columns and values etc
@@ -78,16 +79,11 @@ df %>% dplyr::group_by(subid) %>% count(.) %>% as.data.frame() %>% dplyr::filter
 
 subs2use <- c(4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17, 18, 20, 21, 22, 24, 25, 26) #these are the final subjects to analyse
 
-df  %<>% # shape = 12160, 45 at this point
-  dplyr::group_by(subid, session) %>%
-  dplyr::mutate(prevtrlconfdiff = lag(confdiff)) %>%
-  as.data.frame(.)
-
 df %<>% dplyr::filter(subid %in% subs2use) %>% #keep only subjects safe to use based on clicking to confirm response (this is a failsafe in case it's not coded later on)
   dplyr::filter(clickresp == 1) %>%
   dplyr::filter(DTcheck == 0) #hard code this now
 
-dim(df) #9608, 45 at this point
+dim(df) # 9608 x 47 at this point
 
 
 
