@@ -17,7 +17,7 @@ import sys
 from matplotlib import pyplot as plt
 import seaborn as sns
 import pycircstat as circstat
-p
+
 np.set_printoptions(suppress=True)
 %matplotlib
 
@@ -119,9 +119,7 @@ for i in range(nsubs): #loop over each participant as we are going to simulate t
         ax2.hist(np.abs(parenterror_cued), color = cuedcol, alpha = 0.7, label = 'cued', bins = 20)
         ax2.set_title('absolute error distribution')
         fig.legend()
-        
-    subjabserror_parent = np.abs(subjerror_parent.copy())
-    
+            
     #sample the parent distribution, with replacement, to simulate the across trial response error distribution
     subjerror_neut = np.random.choice(np.abs(parenterror_neut), size = ntrls, replace = True)
     subjerror_cued = np.random.choice(np.abs(parenterror_cued), size = ntrls, replace = True)
@@ -152,7 +150,7 @@ for i in range(nsubs): #loop over each participant as we are going to simulate t
 
 alldf = alldf.assign(conferror = np.subtract(alldf.error, alldf.confidence)) #signed, positive = overconfident, negative = underconfident
 
-#%% 
+
 
 #basic fixed effects analyses here to make sure that a difference comes out (if it doesnt, the sim might be wrong)
 
@@ -170,6 +168,8 @@ df_mad_plot
 sp.stats.ttest_rel(df_mad.query('condition == "cued"').absrdif, df_mad.query('condition == "neutral"').absrdif)
 # TtestResult(statistic=-2.983446268221411, pvalue=0.007636387241782868, df=19)
 
+
+#%%
 fig = plt.figure(figsize = (5,5))
 ax = fig.add_subplot(111)
 ax.bar(x = df_mad_plot.condition, height = df_mad_plot.meanMAD, color = [cuedcol, neutcol], width = 0.7)
