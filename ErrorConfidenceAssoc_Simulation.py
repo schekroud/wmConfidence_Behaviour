@@ -17,8 +17,12 @@ import sys
 from matplotlib import pyplot as plt
 import seaborn as sns
 import pycircstat as circstat
+p
 np.set_printoptions(suppress=True)
 %matplotlib
+
+sys.path.insert(0, '/Users/sammi/Desktop/Experiments/pyCircMixModel')
+import CircMixModel as cmm
 
 def wrap(x):
     return (x+180)%360 - 180
@@ -29,66 +33,373 @@ cuedcol = '#3182bd' #blue, use for cued
 neutcol = '#bdbdbd' #light-ish grey, use for neutral
 diffcol = '#B2DF8A' #for colouring of the bars of difference plots, third distinct colour
 
+wd = '/Users/sammi/Desktop/Experiments/wmConfidence_Behaviour'
+os.chdir(wd)
+#%%
 
-#create a parent distribution that is smooth, and a subject is a sample of this distribution
-error_parent = wrap90(np.round(np.rad2deg(np.random.vonmises(0, 6, 1000)).astype(int)))
-abserr_parent = np.abs(error_parent.copy())
+E1dat = pd.read_csv(op.join(wd, 'Experiment1', 'data', 'wmSelection_BehaviouralData_All_Preprocessed.csv'))
+subs2use    = [1, 2, 3, 4, 5, 6, 7,    9, 10, 11,     13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
+E1dat = E1dat.query('subid in @subs2use')
+nsubs = E1dat.subid.unique().size
+kappasneut = []
+kappascued = []
+for isub in E1dat.subid.unique():
+    tmpsub = E1dat.copy().query('subid == @isub')
+    tmpsub_neutral = tmpsub.query('cond == "neutral"') #get response error for neutral trials
+    tmpsub_cued    = tmpsub.query('cond == "cued"')
+    
+    B, LL, W = cmm.mixmodel_fit(X = np.deg2rad(tmpsub_neutral.resp.to_numpy()),
+                                T = np.deg2rad(tmpsub_neutral.targori.to_numpy()),
+                                NT = np.deg2rad(tmpsub_neutral.nontargori.to_numpy()))
+    #B holds fitted model params: [kappa, P(target), P(nontarget), P(uniform)]
+    kappasneut.append(B[0])
+    
+    B, LL, W = cmm.mixmodel_fit(X = np.deg2rad(tmpsub_cued.resp.to_numpy()),
+                                T = np.deg2rad(tmpsub_cued.targori.to_numpy()),
+                                NT = np.deg2rad(tmpsub_cued.nontargori.to_numpy()))
+    #B holds fitted model params: [kappa, P(target), P(nontarget), P(uniform)]
+    kappascued.append(B[0])
 
-cuederror_parent = wrap90(np.round(np.rad2deg(np.random.vonmises(0, 9, 1000)).astype(int)))
+    
 
-#visualise the signed and absolute distributions for this parent distribution
-fig = plt.figure(figsize = (10,5))
-ax = fig.add_subplot(1, 2, 1)
-ax.hist(error_parent, color = neutcol, alpha = 0.7, label = 'neutral', bins=20)
-ax.hist(cuederror_parent, color = cuedcol, alpha = 0.7, label = 'cued', bins=20)
-ax = fig.add_subplot(1,2,2)
-ax.hist(np.abs(error_parent), color = neutcol, alpha = 0.7, bins = 20, label = 'neutral')
-ax.hist(np.abs(cuederror_parent), color = cuedcol, alpha = 0.7, bins = 20, label = 'cued')
-ax.legend(loc = 'upper right')
+kappase_neut = sp.stats.sem(kappasneut, ddof=0) #get standard error of these kappas
+kappamean_neut = np.mean(kappasneut) #get mean of these kappas
 
-ntrls = 128
+kappase_cued = sp.stats.sem(kappascued, ddof=0) #get standard error of these kappas
+kappamean_cued = np.mean(kappascued) #get mean of these kappas
 
-#simulate a response error distribution by sampling from this parent distribution
-err = np.random.choice(error_parent, size = ntrls, replace = True) #sample with replacement from this parent distribution
-abserr = np.abs(err)
+#these can be used to sample individual subject precisions
+tmp = wrap90(np.round(np.rad2deg(np.random.vonmises(0, kappamean_neut, 1000)).astype(int)))
+tmp2 = wrap90(np.round(np.rad2deg(np.random.vonmises(0, kappamean_cued, 1000)).astype(int)))
 
-cuederr = np.random.choice(cuederror_parent, size = ntrls, replace = True) #sample cued errors with replacement from its parent distribution
-#scenario 1:
-# no insight on single trial error (or would not make the error)
-# instead, perfect insight to their across trial performance (distribution)
-# which means confidence is instead sampled from the same distribution as error, so that across trial insight is accurate to the performance distribution
-neut_conf = np.random.choice(abserr_parent, size = ntrls, replace = True) #sample with replacement from the same distribution
-cued_conf = np.random.choice(np.abs(cuederr), size = ntrls, replace = True)
-
-
-
-cond = np.concatenate([np.tile(np.array(['neutral']), ntrls), np.tile(np.array(['cued']),ntrls)])
-suberrors = np.concatenate([err, cuederr])
-subconfs = np.concatenate([neut_conf, cued_conf])
-
-df = pd.DataFrame(np.array([cond, suberrors, subconfs]).T, columns = ['condition', 'error', 'confidence'])
-df.error = df.error.astype(int)
-df.confidence = df.confidence.astype(int)
-df = df.assign(absrdif = np.abs(df.error))
-df = df.assign(confidence = np.where(df.confidence == 0, 0.001, df.confidence))
-df = df.assign(logconf = np.log(df.confidence))
-sns.lmplot(data = df,
-           x = 'absrdif', y = 'logconf', hue = 'condition')
-
-sns.lmplot(data = df,
-           y = 'absrdif', x = 'confidence', hue = 'condition', logx = True)
-
-#set up linear model
-lm = sm.regression.linear_model.OLS.from_formula(data = df,
-                                                 formula = 'logconf ~ absrdif*C(condition, Sum("neutral"))')
-lmfit = lm.fit()
-lmfit.summary()
+vis = True
+if vis: #this plots the distributions that are generated by sampling a von mises with the mean fitted kappa of the task data
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.hist(tmp, bins = 30, color = neutcol, alpha = 0.7, label = 'neutral')
+    ax.hist(tmp2, bins = 30, color = cuedcol, alpha = 0.7, label = 'cued')
 
 
-#%% need to figure out a way of operationalising this to run the simulation with a number of subjects
+#%%
 nsubs = 20
-ntrls = 
+ntrls = 128 #trials per condition
+alldf = pd.DataFrame()
+for i in range(nsubs): #loop over each participant as we are going to simulate them separately
+    # sample the kappa of this participants error distribution from a higher distribution
+    # this basically assumes that working memory performance is a distribution across the population and each ppt is a sample from this
+    
+    
+    neutkappa = np.random.normal(loc = kappamean_neut,
+                                 scale = kappase_neut,
+                                 size = 1)
+    # this is actually simulating a single subject kappa
+    # aka precision of the vonmises that fits their working memory error distribution
+    
+    #we can also sample the precision of their error distribution on cued trials
+    cuedkappa = np.random.normal(loc = kappamean_cued,
+                                 scale = kappase_cued,
+                                 size = 1)
+    
+    
+    #we are also going to sample the standard deviation of their error distribution for cued trials
+    #this is going to assume that cueing also leads to better working memory precision, but this improvement amount varies across people
+    
+    parenterror_neut = wrap90(np.round(np.rad2deg(np.random.vonmises(0, neutkappa, 1000)).astype(int)))
+    parenterror_cued = wrap90(np.round(np.rad2deg(np.random.vonmises(0, cuedkappa, 1000)).astype(int)))
+    
+    vis_parent = False
+    if vis_parent: #visualise the error distribution we are going to sample from
+        fig = plt.figure(figsize = (10,5))
+        ax1 = fig.add_subplot(121)
+        ax1.hist(parenterror_neut, color = neutcol, alpha = 0.7, label = 'neutral', bins = 20)
+        ax1.hist(parenterror_cued, color = cuedcol, alpha = 0.7, label = 'cued', bins = 20)
+        ax1.set_title('error distribution')
+        ax2 = fig.add_subplot(122)
+        ax2.hist(np.abs(parenterror_neut), color = neutcol, alpha = 0.7, label = 'neutral', bins = 20)
+        ax2.hist(np.abs(parenterror_cued), color = cuedcol, alpha = 0.7, label = 'cued', bins = 20)
+        ax2.set_title('absolute error distribution')
+        fig.legend()
+        
+    subjabserror_parent = np.abs(subjerror_parent.copy())
+    
+    #sample the parent distribution, with replacement, to simulate the across trial response error distribution
+    subjerror_neut = np.random.choice(np.abs(parenterror_neut), size = ntrls, replace = True)
+    subjerror_cued = np.random.choice(np.abs(parenterror_cued), size = ntrls, replace = True)
+    
+    
+    
+    #scenario 1: no insight into error on a single trial or the error wouldn't be made.
+    # instead, perfect insight into across trial performance (distribution)
+    # confidence thus sampled from the same distribution as error, so acro trial insight is accurate to the performance distribution
+    
+    neutconf = np.random.choice(np.abs(parenterror_neut), size = ntrls, replace = True)
+    cuedconf = np.random.choice(np.abs(parenterror_cued), size = ntrls, replace = True)
+    
+    cond = np.concatenate([np.tile(np.array(['neutral']), ntrls), np.tile(np.array(['cued']),ntrls)])
+    suberrors = np.concatenate([subjerror_neut, subjerror_cued])
+    subconfs = np.concatenate([neutconf, cuedconf])
+    
+    df = pd.DataFrame(np.array([cond, suberrors, subconfs]).T, columns = ['condition', 'error', 'confidence'])
+    df.error = df.error.astype(int)
+    df.confidence = df.confidence.astype(int)
+    df = df.assign(absrdif = np.abs(df.error))
+    df = df.assign(confidence = np.where(df.confidence == 0, 0.001, df.confidence))
+    df = df.assign(logconf = np.log(df.confidence))
+    df = df.assign(subid = i+1)
+    df = df.assign(trlid = np.add(np.arange(len(df)),1))
+    
+    alldf = pd.concat([alldf, df])
 
+alldf = alldf.assign(conferror = np.subtract(alldf.error, alldf.confidence)) #signed, positive = overconfident, negative = underconfident
+
+#%% 
+
+#basic fixed effects analyses here to make sure that a difference comes out (if it doesnt, the sim might be wrong)
+
+
+df_mad = alldf.groupby(['subid', 'condition'], as_index=False).agg({'absrdif':'mean'})
+df_mad_plot = df_mad.groupby('condition', as_index = False).agg({'absrdif':['mean', sp.stats.sem]})
+df_mad_plot.columns = ['condition', 'meanMAD', 'semMAD']
+
+df_mad_plot
+#   condition   meanMAD    semMAD
+# 0      cued  8.705078  0.179796
+# 1   neutral  9.516797  0.200693
+
+#t-test to test difference in response error between cue conditions, across subjects
+sp.stats.ttest_rel(df_mad.query('condition == "cued"').absrdif, df_mad.query('condition == "neutral"').absrdif)
+# TtestResult(statistic=-2.983446268221411, pvalue=0.007636387241782868, df=19)
+
+fig = plt.figure(figsize = (5,5))
+ax = fig.add_subplot(111)
+ax.bar(x = df_mad_plot.condition, height = df_mad_plot.meanMAD, color = [cuedcol, neutcol], width = 0.7)
+ax.errorbar(x = df_mad_plot.condition, y = df_mad_plot.meanMAD, yerr = df_mad_plot.semMAD,
+            fmt = 'none', ecolor = '#000000', elinewidth = 2, capsize = 7)
+ax.set_ylabel('(mean) mean absolute deviation (°)')
+ax.set_axisbelow(True)
+ax.grid(True, color = '#bdbdbd')
+
+#fixed effects analysis of confidence width too
+
+
+df_confdist = alldf.groupby(['subid', 'condition'], as_index= False).agg({'confidence':'mean'})
+df_confdist_plot = df_confdist.groupby(['condition'], as_index=False).agg(
+    {'confidence':['mean', sp.stats.sem]})
+df_confdist_plot.columns = ['condition', 'meanConf', 'semConf']
+
+df_confdist_plot
+#   condition  meanConf  semConf
+# 0      cued  8.612561  0.14888
+# 1   neutral  9.512564  0.16047
+
+#t-test to look at confidence wedge width between cue conditions
+sp.stats.ttest_rel(df_confdist.query('condition == "cued"').confidence, df_confdist.query('condition == "neutral"').confidence)
+# TtestResult(statistic=-4.591383127930285, pvalue=0.00019931359570275628, df=19)
+
+fig = plt.figure(figsize = (5,5))
+ax = fig.add_subplot(111)
+ax.bar(x = df_confdist_plot.condition, height = df_confdist_plot.meanConf, color = [cuedcol, neutcol], width = 0.7)
+ax.errorbar(x = df_confdist_plot.condition, y = df_confdist_plot.meanConf, yerr = df_confdist_plot.semConf,
+            fmt = 'none', ecolor = '#000000', elinewidth = 2, capsize = 7)
+ax.set_ylabel('mean confidence width (°)')
+ax.set_axisbelow(True)
+ax.grid(True, color = '#bdbdbd')
+
+#%% 
+
+# the remaining question: in this simulation, is there an interaction in the linear model showing a more accurate relationship
+# between error and confidence between conditions, purely where the only difference is a more precise error distribution across trials?
+
+
+
+allBetas = pd.DataFrame()
+allfits = []
+df_glms = pd.DataFrame()
+for i in alldf.subid.unique(): #loop over simulate subjects
+    subdat = alldf.copy().query('subid == @i').reset_index()
+    subdat = subdat.assign(confwidth = np.where(subdat.confidence == 0, 0.1, subdat.confidence)) #cant log a 0, so set this to a similarly small value instead
+    subdat = subdat.assign(logcw = np.log(subdat.confwidth))
+    
+    logcw = subdat.logcw.to_numpy()
+    cuetype = subdat.condition.to_numpy()
+    cuetype = np.where(cuetype == 'neutral', -1, 1) #set neutral trials to -1, so this is a contrast regressor of cued - neutral
+    error = subdat.absrdif.to_numpy()
+    error = np.where(error == 0, 0.1, error) #zero error wouldn't get modelled, so set it to similarly small error to be able to include in model
+    errXcue = np.multiply(error, cuetype) #code the interaction
+    intercept = np.ones(logcw.size)
+    
+    desMat = np.array([intercept, cuetype, error, errXcue]).T
+    
+    model = sm.regression.linear_model.OLS(endog = logcw,
+                                                  exog = pd.DataFrame(desMat, columns = ['intercept', 'cuetype', 'error', 'cueXerror']))
+    # model = sm.regression.linear_model.OLS.from_formula(data = subdat,
+    #                                                     formula = 'logcw ~ error*C(cond, Treatment(reference="neutral"))')
+    
+    fit = model.fit()
+    fit.summary()
+    betas = pd.DataFrame(fit.params).T
+    betas = betas.assign(subid = i)
+    
+    residuals = fit.resid
+    subdat = subdat.assign(residual = residuals,
+                           fittedlogcw = fit.fittedvalues)
+    
+    df_glms = pd.concat([df_glms, subdat])
+    allfits.append(fit)
+    allBetas = pd.concat([allBetas, betas])
+
+#random effects analysis of these betas - e.g., are they significantly different from 0 across the group?
+# inference here would be whether a new subject would likely have the same effect
+# inference at subject level, rather than observation (trial) level
+
+allbetas = pd.melt(allBetas, id_vars = 'subid', value_vars = ['intercept', 'cuetype', 'error', 'cueXerror'], var_name = 'regressor', value_name = 'beta')
+allbetas = allbetas.query('regressor != "intercept"') #drop intercept as not that useful to see
+sns.barplot(allbetas, x = 'regressor', y = 'beta', estimator = 'mean', errorbar = 'se', hue = 'regressor')
+
+
+#t-tests on these betas to test for significant effects across subjects
+sp.stats.ttest_1samp(allbetas.query('regressor == "cuetype"').beta, popmean = 0, alternative = 'two-sided')
+# TtestResult(statistic=-1.3502237785309812, pvalue=0.19281002162380942, df=19)
+
+
+sp.stats.ttest_1samp(allbetas.query('regressor == "error"').beta, popmean = 0, alternative = 'two-sided')
+# TtestResult(statistic=0.0869227825614776, pvalue=0.9316424309233438, df=19)
+
+
+sp.stats.ttest_1samp(allbetas.query('regressor == "cueXerror"').beta, popmean = 0, alternative = 'two-sided')
+# TtestResult(statistic=0.9275781535159155, pvalue=0.36526067103980087, df=19)
+
+
+#plot these regressor coefficients across subjects
+plotbetas = allbetas.groupby('regressor', as_index = False).agg({'beta':['mean', sp.stats.sem]})
+plotbetas.columns = ['regressor', 'meanBeta', 'semBeta']
+plotbetas = plotbetas.sort_values(by = 'regressor', ascending = False)
+
+fig = plt.figure(figsize = (4,4))
+ax = fig.add_subplot(111)
+ax.bar(x = plotbetas.regressor, height = plotbetas.meanBeta, color = ['#1b9e77', '#d95f02', '#7570b3'], width = 0.5)
+ax.errorbar(x = plotbetas.regressor, y = plotbetas.meanBeta, yerr = plotbetas.semBeta,
+            fmt = 'none', ecolor = '#000000', elinewidth = 2, capsize = 7)
+ax.set_ylabel('beta (AU)')
+ax.set_axisbelow(True)
+ax.grid(True, color = '#bdbdbd')
+fig.tight_layout()
+
+'''
+unless i've made a big code error here, it looks like running a simulation like this can result in *no* effects seen at all
+
+steps for the simulation:
+- create normal distribution of kappa (concentration parameters) for the population
+- sample the concentration parameter of a von mises distribution from this population distribution, per subject, per condition
+    - essentially randomly samples a subjects performance from a population of possible performances
+- create a parent distribution for this participant, of response errors (1k samples).
+- for the simulated task data, sample randomly (with replacement) from this subject performance parent distribution to get their response error distribution
+    - theoretically this assumes that a participant has a performance distribution and their task data is a subset of this.
+    - if they redid the task, performance wouldn't be the same, but instead would be another independent sample from their personal performance distribution
+- assuming no single trial insight, but insight into variability across trials, sample confidence on each trial from the absolute values of the parent performance distribution
+    - this is done separately for neutral and cued trials. this therefore assumes participants have insight to the effect of the cue on their performance
+- model is then fit separately to each participant, modelling log-confidence as a function of absolute reponse error, cue type, and the interaction of the two
+    
+'''
+
+
+
+#%%
+
+
+'''
+We can run a second simulation that assumes people have insight into their single trial error, but this introspection is a noisy estimate of performance
+(e.g. there is some gaussian noise added to the single trial response error)
+
+first want to see if this idea gives qualitatively the similar patterns we find
+'''
+
+
+
+
+nsubs = 20
+ntrls = 128 #trials per condition
+alldf = pd.DataFrame()
+for i in range(nsubs): #loop over each participant as we are going to simulate them separately
+    # sample the kappa of this participants error distribution from a higher distribution
+    # this basically assumes that working memory performance is a distribution across the population and each ppt is a sample from this
+    
+    
+    neutkappa = np.random.normal(loc = kappamean_neut,
+                                 scale = kappase_neut,
+                                 size = 1)
+    # this is actually simulating a single subject kappa
+    # aka precision of the vonmises that fits their working memory error distribution
+    
+    #we can also sample the precision of their error distribution on cued trials
+    cuedkappa = np.random.normal(loc = kappamean_cued,
+                                 scale = kappase_cued,
+                                 size = 1)
+    
+    
+    #we are also going to sample the standard deviation of their error distribution for cued trials
+    #this is going to assume that cueing also leads to better working memory precision, but this improvement amount varies across people
+    
+    parenterror_neut = wrap90(np.round(np.rad2deg(np.random.vonmises(0, neutkappa, 1000)).astype(int)))
+    parenterror_cued = wrap90(np.round(np.rad2deg(np.random.vonmises(0, cuedkappa, 1000)).astype(int)))
+    
+    vis_parent = False
+    if vis_parent: #visualise the error distribution we are going to sample from
+        fig = plt.figure(figsize = (10,5))
+        ax1 = fig.add_subplot(121)
+        ax1.hist(parenterror_neut, color = neutcol, alpha = 0.7, label = 'neutral', bins = 20)
+        ax1.hist(parenterror_cued, color = cuedcol, alpha = 0.7, label = 'cued', bins = 20)
+        ax1.set_title('error distribution')
+        ax2 = fig.add_subplot(122)
+        ax2.hist(np.abs(parenterror_neut), color = neutcol, alpha = 0.7, label = 'neutral', bins = 20)
+        ax2.hist(np.abs(parenterror_cued), color = cuedcol, alpha = 0.7, label = 'cued', bins = 20)
+        ax2.set_title('absolute error distribution')
+        fig.legend()
+        
+    subjabserror_parent = np.abs(subjerror_parent.copy())
+    
+    #sample the parent distribution, with replacement, to simulate the across trial response error distribution
+    subjerror_neut = np.random.choice(np.abs(parenterror_neut), size = ntrls, replace = True)
+    subjerror_cued = np.random.choice(np.abs(parenterror_cued), size = ntrls, replace = True)
+    
+    
+    
+    #scenario 1: no insight into error on a single trial or the error wouldn't be made.
+    # instead, perfect insight into across trial performance (distribution)
+    # confidence thus sampled from the same distribution as error, so acro trial insight is accurate to the performance distribution
+    
+    neutconf = np.random.choice(np.abs(parenterror_neut), size = ntrls, replace = True)
+    cuedconf = np.random.choice(np.abs(parenterror_cued), size = ntrls, replace = True)
+    
+    cond = np.concatenate([np.tile(np.array(['neutral']), ntrls), np.tile(np.array(['cued']),ntrls)])
+    suberrors = np.concatenate([subjerror_neut, subjerror_cued])
+    subconfs = np.concatenate([neutconf, cuedconf])
+    
+    df = pd.DataFrame(np.array([cond, suberrors, subconfs]).T, columns = ['condition', 'error', 'confidence'])
+    df.error = df.error.astype(int)
+    df.confidence = df.confidence.astype(int)
+    df = df.assign(absrdif = np.abs(df.error))
+    df = df.assign(confidence = np.where(df.confidence == 0, 0.001, df.confidence))
+    df = df.assign(logconf = np.log(df.confidence))
+    df = df.assign(subid = i+1)
+    df = df.assign(trlid = np.add(np.arange(len(df)),1))
+    
+    alldf = pd.concat([alldf, df])
+
+alldf = alldf.assign(conferror = np.subtract(alldf.error, alldf.confidence)) #signed, positive = overconfident, negative = underconfident
+
+
+
+
+
+
+#%%
+# fig = plt.figure()
+# ax = fig.add_subplot(111)
+# # ax.hist(error, label = 'raw error', alpha = 0.5)
+# ax.hist(np.power(error, 0.5), label = 'sqrt error', alpha = 0.5)
+# ax.hist(np.log(error), label = 'log error', alpha = 0.5)
+# fig.legend()
 
 
 
