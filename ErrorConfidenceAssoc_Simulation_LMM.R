@@ -39,6 +39,7 @@ wrap90 <- function(x) (x+90)%%180 - 90
 
 
 wd <- 'C:/Users/sammirc/Desktop/phd/wmConfidence_Behaviour'
+wd <- '/Users/sammi/Desktop/Experiments/wmConfidence_Behaviour'
 setwd(wd)
 
 nsims <- 10000
@@ -144,6 +145,13 @@ tmp <- ifelse(simout_df_tstats$`absrdif:condition1` > 3.127, 1, 0)
 sum(tmp)/nsims 
 #0.0008
 #only 8 out of 10k simulations had a t-value larger than our observed relationship
+
+ggplot(simout_df_tstats) +
+  geom_histogram(aes(x=`absrdif:condition1`), bins = 100, fill = '#756bb1') +
+  geom_vline(xintercept = 3.127, size = 0.5, color = '#000000') +
+  labs(x= 't-value', y = 'count')
+ggsave(filename = paste0(wd, '/NullDistribution_LMManalysis_tstats.eps'), dpi = 600, height = 4, width = 6, device = cairo_ps)
+
 
 #can get quantiles for the simulated t-stats
 quantile(simout_df_tstats$`absrdif:condition1`, probs = c(0.05, 0.25, 0.5, 0.75, 0.95))
