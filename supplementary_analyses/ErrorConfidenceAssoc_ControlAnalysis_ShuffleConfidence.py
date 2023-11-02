@@ -143,8 +143,8 @@ for isub in E1dat.subid.unique():
                color = '#3182bd', s = 15)
 ax.set_ylabel("spearmans r")
 ax.set_xlabel('participant & condition')
-fig.savefig(op.join(wd, 'PermutationControl_boxplot_perSubCondition.eps'), format = 'eps', dpi = 300)
-fig.savefig(op.join(wd, 'PermutationControl_boxplot_perSubCondition.pdf'), format = 'pdf', dpi = 300)
+fig.savefig(op.join(wd,'supplementary_analysis_figures', 'permutation_analyses', 'CorrelationControl_boxplot_perSubCondition.eps'), format = 'eps', dpi = 300)
+fig.savefig(op.join(wd,'supplementary_analysis_figures', 'permutation_analyses', 'CorrelationControl_boxplot_perSubCondition.pdf'), format = 'pdf', dpi = 300)
 #%%
 
 count = -1
@@ -165,8 +165,8 @@ for isub in E1dat.subid.unique():
     count+=1
 ax.set_xlabel('participant & condition')
 ax.set_ylabel("spearman's r")
-fig.savefig(op.join(wd, 'PermutationControl_pointrange_perSubCondition.eps'), format = 'eps', dpi = 300)
-fig.savefig(op.join(wd, 'PermutationControl_pointrange_perSubCondition.pdf'), format = 'pdf', dpi = 300)
+fig.savefig(op.join(wd, 'supplementary_analysis_figures', 'permutation_analyses', 'CorrelationControl_pointrange_perSubCondition.eps'), format = 'eps', dpi = 300)
+fig.savefig(op.join(wd, 'supplementary_analysis_figures', 'permutation_analyses', 'CorrelationControl_pointrange_perSubCondition.pdf'), format = 'pdf', dpi = 300)
 #%%
 
 #can do a paired-samples t-test on the observed correlation vs mean permuted correlation

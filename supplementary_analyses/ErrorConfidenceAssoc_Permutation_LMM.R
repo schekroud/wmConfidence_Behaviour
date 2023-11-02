@@ -4,6 +4,7 @@ library(magrittr)  # allows use of more pipes
 library(afex)      # anovas etc
 library(MASS)
 library(circular)
+options(scipen=999) #suppress scientific notation
 
 
 #this just loads in some extra fonts for figure making
@@ -71,8 +72,11 @@ tvals = list()
 pvals = list()
 simout_df_tstats <- data.frame()
 simout_df_betas <- data.frame()
+set.seed(123)
 
 if( file.exists(paste0(wd, '/LMM_Permutations_10k_tstats.RDS'))){
+  simout_df_tstats <- readRDS(file = paste0(wd, '/LMM_Permutations_10k_tstats.RDS'))
+  simout_df_betas <- readRDS(file = paste0(wd, '/LMM_Permutations_10k_betas.RDS'))
 } else{ 
   
   for(isim in seq(1, nsims, by=1)){
@@ -94,8 +98,18 @@ if( file.exists(paste0(wd, '/LMM_Permutations_10k_tstats.RDS'))){
       cuedconf = tmpsubcued$confwidth
       
       #shuffle confidence across trials. preserves across trial distribution, but kills link between error & confidence at single trial level
-      confneut = sample(neutconf, size = length(neutconf), replace = T)
-      confcued = sample(cuedconf, size = length(cuedconf), replace = T)
+      confneut = sample(neutconf)
+      confcued = sample(cuedconf)
+      
+      #make sure that the shuffled is not the exact same as the original, just to be sure
+      #there will be some similarity normally, but we want to make sure its not exactly the same (so we arent replicating the observed finding)
+      while (identical(neutconf,confneut)){
+        confneut = sample(neutconf)
+      }
+      
+      while(identical(cuedconf, confcued)){
+        confcued = sample(cuedconf)
+      }
       
       tmpsubneut %<>% dplyr::mutate(confwidth = confneut)
       tmpsubcued %<>% dplyr::mutate(confwidth = confcued)
@@ -139,8 +153,8 @@ if( file.exists(paste0(wd, '/LMM_Permutations_10k_tstats.RDS'))){
     simout_df_betas  %<>% dplyr::bind_rows(bvals)
   }
   # save to file so we don't have to repeat the simulations
-  # saveRDS(simout_df_tstats, file = paste0(wd, '/LMM_simulations_10k_tstats.RDS'))
-  # saveRDS(simout_df_betas, file = paste0(wd, '/LMM_simulations_10k_betas.RDS'))
+   saveRDS(simout_df_tstats, file = paste0(wd, '/LMM_Permutations_10k_tstats.RDS'))
+   saveRDS(simout_df_betas, file = paste0(wd, '/LMM_Permutations_10k_betas.RDS'))
 }
 
 #observed effect in experiment 1: b = -0.13591, t = -3.127
@@ -149,16 +163,31 @@ if( file.exists(paste0(wd, '/LMM_Permutations_10k_tstats.RDS'))){
 #get proportion of t-values larger than our observed t-value
 tmp <- ifelse(simout_df_tstats$`absrdif:condition1` > 3.127, 1, 0)
 sum(tmp)/nsims 
-#0.0008
-#only 8 out of 10k simulations had a t-value larger than our observed relationship
+#0.0009
+#only 9 out of 10k simulations had a t-value larger than our observed relationship
 
 #can get quantiles for the simulated t-stats
 quantile(simout_df_tstats$`absrdif:condition1`, probs = c(0.05, 0.25, 0.5, 0.75, 0.95))
-#         5%         25%         50%         75%         95% 
-#-1.65630650 -0.70517374 -0.01637486  0.66428465  1.60939075 
+#        5%        25%        50%        75%        95% 
+#-1.4986109 -0.5049609  0.1340519  0.7778855  1.7029481 
 
 
-sum(ifelse(abs(simout_df_tstats$`absrdif:condition1`)>3.127,1,0))/nsims #this is the two-sided version of the test - still 0.0011,
+#lets plot the distribution of simulated t-values
+ggplot(simout_df_tstats, aes(x = `absrdif:condition1`)) +
+  geom_histogram(fill = '#1c9099', alpha = 0.7, bins = 100) +
+  geom_vline(xintercept = 3.127, linetype = 'dashed', size = 1, color = '#000000') +
+  labs(x = 't-value', y = 'count')
+ggsave(filename = paste0(wd, '/supplementary_analysis_figures', '/permutation_analyses',
+                         '/NullDistribution_LMManalysis_tstats.eps'),
+       dpi = 300, height = 8, width = 8, device = cairo_ps)
+ggsave(filename = paste0(wd, '/supplementary_analysis_figures', '/permutation_analyses',
+                         '/NullDistribution_LMManalysis_tstats.pdf'),
+       dpi = 300, height = 8, width = 8, device = cairo_pdf())
+
+
+
+
+sum(ifelse(abs(simout_df_tstats$`absrdif:condition1`)>3.127,1,0))/nsims #this is the two-sided version of the test - still 0.002,
 #so suggests the observed t-value didn't arise under the null hypothesis of this simulation
 #this tests how likely a t-value of that *magnitude* is likely under the null, ignoring direction (so just strength of effect)
 

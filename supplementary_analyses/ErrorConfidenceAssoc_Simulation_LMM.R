@@ -4,6 +4,7 @@ library(magrittr)  # allows use of more pipes
 library(afex)      # anovas etc
 library(MASS)
 library(circular)
+options(scipen=999)
 
 
 #this just loads in some extra fonts for figure making
@@ -39,7 +40,7 @@ wrap90 <- function(x) (x+90)%%180 - 90
 
 
 wd <- 'C:/Users/sammirc/Desktop/phd/wmConfidence_Behaviour'
-wd <- '/Users/sammi/Desktop/Experiments/wmConfidence_Behaviour'
+#wd <- '/Users/sammi/Desktop/Experiments/wmConfidence_Behaviour'
 setwd(wd)
 
 nsims <- 10000
@@ -143,20 +144,24 @@ saveRDS(simout_df_betas, file = paste0(wd, '/LMM_simulations_10k_betas.RDS'))
 #get proportion of t-values larger than our observed t-value
 tmp <- ifelse(simout_df_tstats$`absrdif:condition1` > 3.127, 1, 0)
 sum(tmp)/nsims 
-#0.0008
-#only 8 out of 10k simulations had a t-value larger than our observed relationship
+#0.0009
+#only 9 out of 10k simulations had a t-value larger than our observed relationship
 
 ggplot(simout_df_tstats) +
-  geom_histogram(aes(x=`absrdif:condition1`), bins = 100, fill = '#756bb1') +
-  geom_vline(xintercept = 3.127, size = 0.5, color = '#000000') +
+  geom_histogram(aes(x=`absrdif:condition1`), bins = 100, fill = '#1c9099') +
+  geom_vline(xintercept = 3.127, linetype = 'dashed', size = 1, color = '#000000') +
   labs(x= 't-value', y = 'count')
-ggsave(filename = paste0(wd, '/NullDistribution_LMManalysis_tstats.eps'), dpi = 600, height = 4, width = 6, device = cairo_ps)
-
+ggsave(filename = paste0(wd, '/supplementary_analysis_figures', '/simulation_analyses',
+                         '/NullDistribution_LMManalysis_tstats.eps'),
+       dpi = 300, height = 8, width = 8, device = cairo_ps)
+ggsave(filename = paste0(wd, '/supplementary_analysis_figures', '/simulation_analyses',
+                         '/NullDistribution_LMManalysis_tstats.pdf'),
+       dpi = 300, height = 8, width = 8, device = cairo_pdf())
 
 #can get quantiles for the simulated t-stats
 quantile(simout_df_tstats$`absrdif:condition1`, probs = c(0.05, 0.25, 0.5, 0.75, 0.95))
 #         5%         25%         50%         75%         95% 
-#-1.65630650 -0.70517374 -0.01637486  0.66428465  1.60939075 
+#-1.67848228 -0.69749874 -0.03228868  0.64238888  1.58447451 
 
 
 sum(ifelse(abs(simout_df_tstats$`absrdif:condition1`)>3.127,1,0))/nsims #this is the two-sided version of the test - still 0.0011,
